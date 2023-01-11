@@ -1,29 +1,38 @@
 library(tidyverse) # for dplyr
-library(rjson)     # for json
+library(jsonlite)  # for json
 library(readxl)    # for xlsx
 library(haven)     # for sas7bdat
+library(arsenal)   # for comparing data frames
 
 
-#read CSV with read_csv
+#read CSV with dplyr::read_csv
 dplyr_read_csv <- read_csv("World Class.csv")
 
-#read csv with read.csv
-base_read_csv <- read.csv("World Class.csv")
+#read csv with base::read.csv()
+base_read_csv <- read.csv("World Class.csv",
+                          check.names = FALSE)
+comparedf(dplyr_read_csv, base_read_csv) |> 
+  summary()
 
-#read Tab-delimited values with read_tsv
+#read cssv with base::read.table()
+base_read_table <- read.table("World Class.csv", 
+                              sep=",", 
+                              header=TRUE, 
+                              check.names=FALSE)
+
+#read Tab-delimited values with dplyr::read_tsv
 dplyr_read_tsv <- read_tsv("World Class.txt")
 
-#read JSON with rjson
-#read raw json data
-raw_json_data <- read_file("World Class.json")
-test_json <- fromJSON(raw_json_data)
-as.data.frame(test_json)
-rjson_json <- fromJSON(file = "World Class.json") |> 
-  as.data.frame()
+#read JSON file with jsonlite::fromJSON()
+json_fromJSON <- fromJSON("World Class.json")
 
-#read xlsx file
-readxl_read_xls <-  read_xlsx("World Class.xlsx")
+#read xlsx file with readxl::readxlsx
+readxl_read_xlsx <-  read_xlsx("World Class.xlsx")
+comparedf(dplyr_read_csv, readxl_read_xlsx) |> 
+  summary()
 
-#read sasv7bdat file
+#read sasv7bdat file with haven::read_sas
 haven_read_sas <- read_sas("World_Class.sas7bdat")
-haven_read_stx <- read_xpt("WORLD_CL.stx")
+
+#read sas transport file with haven::read_xpt()
+haven_read_xpt <- read_xpt("WORLD_CL.stx")
