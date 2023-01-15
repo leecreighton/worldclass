@@ -1,0 +1,61 @@
+---
+title: "Testing tough Unicode in R"
+subtitle: "DRAFT DOCUMENT"
+output: html_document
+date: "2023-01-15"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+I'd like to examine R's abilities to read Unicode-intensive files. The test file[^1] is a simulated class of students whose students have names in 29 languages. That is, each record has an age, gender, height (in cm and inches), and weight (in cm and inches) followed by 29 loosley equivalent names.
+
+The intensiveness comes from these names, which include languages that are written in various directions. The columns names specify the language, in the language itself (rather than English). That is, the "Korean" column is written in Hangul as "한국어".
+
+## File formats
+
+The data are in both text and binary formats. Text formats are:
+
+1. comma-separated values (`.csv`)
+1. tab-delimited ('.txt')
+1. JavaScript Object Notation ('.json')
+1. Excel ('.xlsx')
+
+Binary formats are:
+
+1. SAS data ('.sasv7bdat')
+1. SAS transport ('.stx')
+1. JMP data table ('.jmp')
+
+All files are freely availably from my [github](https://github.com/leecreighton/worldclass) repository.
+
+## Packages used to read files
+
+In addition to Base R's `read.csv()` and `read.table()` functions, the following packages were used to read the various file formats.
+
+```{r load libraries, message=FALSE, warning=FALSE}
+library(tidyverse) # loads dplyr package, for reading .csv and .tsv files
+library(jsonlite)  # for json
+library(readxl)    # for xlsx
+library(haven)     # for sas7bdat and .stx
+```
+
+## Processing and comparing files
+
+Each method will be tested with default settings that are then adjusted as needed.
+
+The `.csv` file provides the standard that all others are compared against. It is read without error using `dplyr::read_csv()`. Note that all column names are correct, including those that have parentheses.
+```{r read_csv message=FALSE, warning=FALSE}
+dplyr_read_csv <- read_csv("World Class.csv")
+```
+
+### CSV using `read.csv()` and `read.table()`
+Using Base R's `read.csv()` with default arguments results in differences.
+```{r read.csv message=FALSE, warning=FALSE, error=FALSE}
+base_read_csv_T <- read.csv("World Class.csv")
+setdiff(dplyr_read_csv, base_read_csv_T)
+```
+
+
+[^1]: [Erin Vang](mailto:erin.vang@globalpragmatica.com) of [Global Pragmatica, LLC](http://www.globalpragmatica.com) compiled the original data.
