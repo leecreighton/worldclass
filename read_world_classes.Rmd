@@ -46,13 +46,13 @@ library(haven)     # for sas7bdat and .stx
 Each method will be tested with default settings that are then adjusted as needed.
 
 The `.csv` file provides the standard that all others are compared against. It is read without error using `dplyr::read_csv()`. Note that all column names are correct, including those that have parentheses.
-```{r read_csv message=FALSE, warning=FALSE}
+```{r message=FALSE, warning=FALSE}
 dplyr_read_csv <- read_csv("World Class.csv")
 ```
 
 ### CSV using `read.csv()` and `read.table()`
 Using Base R's `read.csv()` with default arguments results in differences.
-```{r read.csv message=FALSE, warning=FALSE, error=FALSE}
+```{r message=FALSE, warning=FALSE, error=FALSE}
 base_read_csv_T <- read.csv("World Class.csv")
 setdiff(dplyr_read_csv, base_read_csv_T)
 ```
