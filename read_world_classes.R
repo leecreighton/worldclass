@@ -4,14 +4,12 @@ library(readxl)    # for xlsx
 library(haven)     # for sas7bdat
 library(arsenal)   # for comparing data frames
 
-
 #read csv with dplyr::read_csv
 dplyr_read_csv <- read_csv("World Class.csv")
 
 #read csv with base::read.csv() with check names==T
 base_read_csv_T <- read.csv("World Class.csv")
 setdiff(dplyr_read_csv, base_read_csv_T)
-
 
 #read csv with base::read.csv() with check names==F
 base_read_csv_F <- read.csv("World Class.csv",
