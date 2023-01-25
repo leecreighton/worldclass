@@ -9,24 +9,24 @@ date: "2023-01-15"
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-I'd like to examine R's abilities to read Unicode-intensive files. The test file[^1] is a simulated class of students whose students have names in 29 languages. That is, each record has an age, gender, height (in cm and inches), and weight (in cm and inches) followed by 29 loosley equivalent names.
+I'd like to examine R's abilities to read Unicode-intensive files. The test file[^1] is a simulated class of students whose students have names in 29 languages. That is, each record has an age, gender, height (in cm and inches), and weight (in cm and inches) followed by 29 loosely equivalent names.
 
-The intensiveness comes from these names, which include languages that are written in various directions. The columns names specify the language, in the language itself (rather than English). That is, the "Korean" column is written in Hangul as "한국어".
+The Unicode intensiveness comes from these names. The column names specify the language in the language itself (rather than English); that is, the "Korean" column is written in Hangul as "한국어". They left-to-right and right-to-left languages, languages using many alphabets and ideograms, and languages that use characters with multiple diacritics (Tiếng Việt for example). Some column names contain parentheses to distinguish the two height and weight measures, and some contain spaces, since a language may not refer to itself with a single word (Russian is Русский язык, which might translate to "Russian Language").
 
 ## File formats
 
 The data are in both text and binary formats. Text formats are:
 
 1. comma-separated values (`.csv`)
-1. tab-delimited ('.txt')
-1. JavaScript Object Notation ('.json')
-1. Excel ('.xlsx')
+1. tab-delimited (`.txt`)
+1. JavaScript Object Notation (`.json`)
 
 Binary formats are:
 
-1. SAS data ('.sasv7bdat')
-1. SAS transport ('.stx')
-1. JMP data table ('.jmp')
+1. Excel (`.xlsx`)
+1. SAS data (`.sasv7bdat`)
+1. SAS transport (`.stx`)
+1. JMP data table (`.jmp`)
 
 All files are freely availably from my [github](https://github.com/leecreighton/worldclass) repository.
 
@@ -35,26 +35,63 @@ All files are freely availably from my [github](https://github.com/leecreighton/
 In addition to Base R's `read.csv()` and `read.table()` functions, the following packages were used to read the various file formats.
 
 ```{r load libraries, message=FALSE, warning=FALSE}
-library(tidyverse) # loads dplyr package, for reading .csv and .tsv files
-library(jsonlite)  # for json
-library(readxl)    # for xlsx
-library(haven)     # for sas7bdat and .stx
+library(tidyverse) # loads dplyr, for read_csv and read_tsv
+library(jsonlite)  # reads json
+library(rjson)
+library(RJSONIO)
+library(readxl)    # reads Excel xlsx workbooks
+library(haven)     # reads SAS sas7bdat (data) and stx (transport) files
+library(arsenal)   # for detailed comparison of data frames
 ```
 
 ## Processing and comparing files
 
-Each method will be tested with default settings that are then adjusted as needed.
+Each method is tested with default settings that are then adjusted as needed.
 
 The `.csv` file provides the standard that all others are compared against. It is read without error using `dplyr::read_csv()`. Note that all column names are correct, including those that have parentheses.
-```{r message=FALSE, warning=FALSE}
+```{r}
 dplyr_read_csv <- read_csv("World Class.csv")
 ```
 
 ### CSV using `read.csv()` and `read.table()`
-Using Base R's `read.csv()` with default arguments results in differences.
-```{r message=FALSE, warning=FALSE, error=FALSE}
-base_read_csv_T <- read.csv("World Class.csv")
-setdiff(dplyr_read_csv, base_read_csv_T)
+Using R's `read.csv()` with default arguments shows some alterations. The comparison of the data using `colsum()` shows no differences, but the comparison of column names using `setdiff` shows a list of those that were changed.
+```{r error=TRUE}
+# read data using read.csv
+base_read_csv <- read.csv("World Class.csv")
+# compare data cell by cell and sum number of mismatches
+colSums( dplyr_read_csv != base_read_csv)
+# check for differences in column names
+setdiff(names(base_read_csv), names(dplyr_read_csv))
+```
+The differences show in columns whose names have parentheses, which R's name checking changed to a `.`. Also, the Russian and Vietnamese column names have `.`s inserted because of a space in the Russian column name and the multiple diacritics in the Vietnamese column name. Note, however, that the *data* is read correctly, even those with multiple diacritical marks. It is only the column name that has  been altered.
+
+```{r}
+# Look at rows 3 and 4
+base_read_csv[3:4,"Tiê.ng.Viê.t"]
+```
+
+Adding `check.names = FALSE` tells `read.csv()` to read the file with column names intact. The `setdiff()` check results in an empty tibble.
+```{r}
+base_read_csv <- read.csv("World Class.csv",
+                            check.names = FALSE)
+setdiff(dplyr_read_csv, base_read_csv)
+```
+
+Next, we read the same file with the lower-level `read.table()` function, with obvious options, including `check.names = FALSE` as above. Everything reads in correctly.
+
+```{r}
+base_read_table <- read.table("World Class.csv", 
+                              sep=",", 
+                              header=TRUE, 
+                              check.names=FALSE)
+colSums(base_read_table != dplyr_read_csv)
+setdiff(dplyr_read_csv, base_read_table)
+```
+Similarly, using `dplyr`'s `read_tsv()` function with default options results in an unaltered read.
+```{r}
+dplyr_read_tsv <- read_tsv("World Class.txt")
+colSums(base_read_table != dplyr_read_csv)
+setdiff(dplyr_read_csv, base_read_table)
 ```
 
 

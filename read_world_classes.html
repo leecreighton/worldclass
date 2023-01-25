@@ -360,25 +360,31 @@ display: none;
 The test file<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a> is a simulated class of students whose
 students have names in 29 languages. That is, each record has an age,
 gender, height (in cm and inches), and weight (in cm and inches)
-followed by 29 loosley equivalent names.</p>
-<p>The intensiveness comes from these names, which include languages
-that are written in various directions. The columns names specify the
-language, in the language itself (rather than English). That is, the
-“Korean” column is written in Hangul as “한국어”.</p>
+followed by 29 loosely equivalent names.</p>
+<p>The Unicode intensiveness comes from these names. The column names
+specify the language in the language itself (rather than English); that
+is, the “Korean” column is written in Hangul as “한국어”. They
+left-to-right and right-to-left languages, languages using many
+alphabets and ideograms, and languages that use characters with multiple
+diacritics (Tiếng Việt for example). Some column names contain
+parentheses to distinguish the two height and weight measures, and some
+contain spaces, since a language may not refer to itself with a single
+word (Russian is Русский язык, which might translate to “Russian
+Language”).</p>
 <div id="file-formats" class="section level2">
 <h2>File formats</h2>
 <p>The data are in both text and binary formats. Text formats are:</p>
 <ol style="list-style-type: decimal">
 <li>comma-separated values (<code>.csv</code>)</li>
-<li>tab-delimited (‘.txt’)</li>
-<li>JavaScript Object Notation (‘.json’)</li>
-<li>Excel (‘.xlsx’)</li>
+<li>tab-delimited (<code>.txt</code>)</li>
+<li>JavaScript Object Notation (<code>.json</code>)</li>
 </ol>
 <p>Binary formats are:</p>
 <ol style="list-style-type: decimal">
-<li>SAS data (‘.sasv7bdat’)</li>
-<li>SAS transport (‘.stx’)</li>
-<li>JMP data table (‘.jmp’)</li>
+<li>Excel (<code>.xlsx</code>)</li>
+<li>SAS data (<code>.sasv7bdat</code>)</li>
+<li>SAS transport (<code>.stx</code>)</li>
+<li>JMP data table (<code>.jmp</code>)</li>
 </ol>
 <p>All files are freely availably from my <a href="https://github.com/leecreighton/worldclass">github</a>
 repository.</p>
@@ -388,13 +394,18 @@ repository.</p>
 <p>In addition to Base R’s <code>read.csv()</code> and
 <code>read.table()</code> functions, the following packages were used to
 read the various file formats.</p>
-<pre class="r"><code>library(tidyverse) # loads dplyr package, for reading .csv and .tsv files
-library(jsonlite)  # for json
-library(readxl)    # for xlsx
-library(haven)     # for sas7bdat and .stx</code></pre>
+<pre class="r"><code>library(tidyverse) # loads dplyr, for read_csv and read_tsv
+library(jsonlite)  # reads json
+library(rjson)
+library(RJSONIO)
+library(readxl)    # reads Excel xlsx workbooks
+library(haven)     # reads SAS sas7bdat (data) and stx (transport) files
+library(arsenal)   # for detailed comparison of data frames</code></pre>
 </div>
 <div id="processing-and-comparing-files" class="section level2">
 <h2>Processing and comparing files</h2>
+<p>Each method is tested with default settings that are then adjusted as
+needed.</p>
 <p>The <code>.csv</code> file provides the standard that all others are
 compared against. It is read without error using
 <code>dplyr::read_csv()</code>. Note that all column names are correct,
@@ -410,6 +421,137 @@ including those that have parentheses.</p>
 ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
 <div id="csv-using-read.csv-and-read.table" class="section level3">
 <h3>CSV using <code>read.csv()</code> and <code>read.table()</code></h3>
+<p>Using R’s <code>read.csv()</code> with default arguments shows some
+alterations. The comparison of the data using <code>colsum()</code>
+shows no differences, but the comparison of column names using
+<code>setdiff</code> shows a list of those that were changed.</p>
+<pre class="r"><code># read data using read.csv
+base_read_csv &lt;- read.csv(&quot;World Class.csv&quot;)
+# compare data cell by cell and sum number of mismatches
+colSums( dplyr_read_csv != base_read_csv)</code></pre>
+<pre><code>##                age                sex       height (in.)       weight (lb.) 
+##                  0                  0                  0                  0 
+##       height (cm.)       weight (kg.)              Shqip            Euskera 
+##                  0                  0                  0                  0 
+##  中文 (Simplified) 中文 (Traditional)           Hrvatska              Dansk 
+##                  0                  0                  0                  0 
+##       English (GB)       English (US)              فارسى              Suomi 
+##                  0                  0                  0                  0 
+##           Français             Gailge            Deutsch           Ελληνικά 
+##                  0                  0                  0                  0 
+##             Magyar           Íslenska              India           Italiano 
+##                  0                  0                  0                  0 
+##             日本語             한국어         Македонија              Norsk 
+##                  0                  0                  0                  0 
+##          Português       Русский язык             Srbija        Slovenščina 
+##                  0                  0                  0                  0 
+##            Español            Svenska         Tiếng Việt 
+##                  0                  0                  0</code></pre>
+<pre class="r"><code># check for differences in column names
+setdiff(names(base_read_csv), names(dplyr_read_csv))</code></pre>
+<pre><code>##  [1] &quot;height..in..&quot;       &quot;weight..lb..&quot;       &quot;height..cm..&quot;      
+##  [4] &quot;weight..kg..&quot;       &quot;中文..Simplified.&quot;  &quot;中文..Traditional.&quot;
+##  [7] &quot;English..GB.&quot;       &quot;English..US.&quot;       &quot;Русский.язык&quot;      
+## [10] &quot;Tiê.ng.Viê.t&quot;</code></pre>
+<p>The differences show in columns whose names have parentheses, which
+R’s name checking changed to a <code>.</code>. Also, the Russian and
+Vietnamese column names have <code>.</code>s inserted because of a space
+in the Russian column name and the multiple diacritics in the Vietnamese
+column name. Note, however, that the <em>data</em> is read correctly,
+even those with multiple diacritical marks. It is only the column name
+that has been altered.</p>
+<pre class="r"><code># Look at rows 3 and 4
+base_read_csv[3:4,&quot;Tiê.ng.Viê.t&quot;]</code></pre>
+<pre><code>## [1] &quot;Bấc&quot;        &quot;Bạch Tuyểt&quot;</code></pre>
+<p>Adding <code>check.names = FALSE</code> tells <code>read.csv()</code>
+to read the file with column names intact. The <code>setdiff()</code>
+check results in an empty tibble.</p>
+<pre class="r"><code>base_read_csv &lt;- read.csv(&quot;World Class.csv&quot;,
+                            check.names = FALSE)
+setdiff(dplyr_read_csv, base_read_csv)</code></pre>
+<pre><code>## # A tibble: 0 × 35
+## # … with 35 variables: age &lt;dbl&gt;, sex &lt;chr&gt;, height (in.) &lt;dbl&gt;,
+## #   weight (lb.) &lt;dbl&gt;, height (cm.) &lt;dbl&gt;, weight (kg.) &lt;dbl&gt;, Shqip &lt;chr&gt;,
+## #   Euskera &lt;chr&gt;, 中文 (Simplified) &lt;chr&gt;, 中文 (Traditional) &lt;chr&gt;,
+## #   Hrvatska &lt;chr&gt;, Dansk &lt;chr&gt;, English (GB) &lt;chr&gt;, English (US) &lt;chr&gt;,
+## #   فارسى &lt;chr&gt;, Suomi &lt;chr&gt;, Français &lt;chr&gt;, Gailge &lt;chr&gt;, Deutsch &lt;chr&gt;,
+## #   Ελληνικά &lt;chr&gt;, Magyar &lt;chr&gt;, Íslenska &lt;chr&gt;, India &lt;chr&gt;, Italiano &lt;chr&gt;,
+## #   日本語 &lt;chr&gt;, 한국어 &lt;chr&gt;, Македонија &lt;chr&gt;, Norsk &lt;chr&gt;, …</code></pre>
+<p>Next, we read the same file with the lower-level
+<code>read.table()</code> function, with obvious options, including
+<code>check.names = FALSE</code> as above. Everything reads in
+correctly.</p>
+<pre class="r"><code>base_read_table &lt;- read.table(&quot;World Class.csv&quot;, 
+                              sep=&quot;,&quot;, 
+                              header=TRUE, 
+                              check.names=FALSE)
+colSums( base_read_table != dplyr_read_csv)</code></pre>
+<pre><code>##                age                sex       height (in.)       weight (lb.) 
+##                  0                  0                  0                  0 
+##       height (cm.)       weight (kg.)              Shqip            Euskera 
+##                  0                  0                  0                  0 
+##  中文 (Simplified) 中文 (Traditional)           Hrvatska              Dansk 
+##                  0                  0                  0                  0 
+##       English (GB)       English (US)              فارسى              Suomi 
+##                  0                  0                  0                  0 
+##           Français             Gailge            Deutsch           Ελληνικά 
+##                  0                  0                  0                  0 
+##             Magyar           Íslenska              India           Italiano 
+##                  0                  0                  0                  0 
+##             日本語             한국어         Македонија              Norsk 
+##                  0                  0                  0                  0 
+##          Português       Русский язык             Srbija        Slovenščina 
+##                  0                  0                  0                  0 
+##            Español            Svenska         Tiếng Việt 
+##                  0                  0                  0</code></pre>
+<pre class="r"><code>setdiff(dplyr_read_csv, base_read_table)</code></pre>
+<pre><code>## # A tibble: 0 × 35
+## # … with 35 variables: age &lt;dbl&gt;, sex &lt;chr&gt;, height (in.) &lt;dbl&gt;,
+## #   weight (lb.) &lt;dbl&gt;, height (cm.) &lt;dbl&gt;, weight (kg.) &lt;dbl&gt;, Shqip &lt;chr&gt;,
+## #   Euskera &lt;chr&gt;, 中文 (Simplified) &lt;chr&gt;, 中文 (Traditional) &lt;chr&gt;,
+## #   Hrvatska &lt;chr&gt;, Dansk &lt;chr&gt;, English (GB) &lt;chr&gt;, English (US) &lt;chr&gt;,
+## #   فارسى &lt;chr&gt;, Suomi &lt;chr&gt;, Français &lt;chr&gt;, Gailge &lt;chr&gt;, Deutsch &lt;chr&gt;,
+## #   Ελληνικά &lt;chr&gt;, Magyar &lt;chr&gt;, Íslenska &lt;chr&gt;, India &lt;chr&gt;, Italiano &lt;chr&gt;,
+## #   日本語 &lt;chr&gt;, 한국어 &lt;chr&gt;, Македонија &lt;chr&gt;, Norsk &lt;chr&gt;, …</code></pre>
+<p>Similarly, using <code>dplyr</code>’s <code>read_tsv()</code>
+function with default options results in an unaltered read.</p>
+<pre class="r"><code>dplyr_read_tsv &lt;- read_tsv(&quot;World Class.txt&quot;)</code></pre>
+<pre><code>## Rows: 40 Columns: 35
+## ── Column specification ────────────────────────────────────────────────────────
+## Delimiter: &quot;\t&quot;
+## chr (30): sex, Shqip, Euskera, 中文 (Simplified), 中文 (Traditional), Hrvatska, ...
+## dbl  (5): age, height (in.), weight (lb.), height (cm.), weight (kg.)
+## 
+## ℹ Use `spec()` to retrieve the full column specification for this data.
+## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
+<pre class="r"><code>colSums(base_read_table != dplyr_read_csv)</code></pre>
+<pre><code>##                age                sex       height (in.)       weight (lb.) 
+##                  0                  0                  0                  0 
+##       height (cm.)       weight (kg.)              Shqip            Euskera 
+##                  0                  0                  0                  0 
+##  中文 (Simplified) 中文 (Traditional)           Hrvatska              Dansk 
+##                  0                  0                  0                  0 
+##       English (GB)       English (US)              فارسى              Suomi 
+##                  0                  0                  0                  0 
+##           Français             Gailge            Deutsch           Ελληνικά 
+##                  0                  0                  0                  0 
+##             Magyar           Íslenska              India           Italiano 
+##                  0                  0                  0                  0 
+##             日本語             한국어         Македонија              Norsk 
+##                  0                  0                  0                  0 
+##          Português       Русский язык             Srbija        Slovenščina 
+##                  0                  0                  0                  0 
+##            Español            Svenska         Tiếng Việt 
+##                  0                  0                  0</code></pre>
+<pre class="r"><code>setdiff(dplyr_read_csv, base_read_table)</code></pre>
+<pre><code>## # A tibble: 0 × 35
+## # … with 35 variables: age &lt;dbl&gt;, sex &lt;chr&gt;, height (in.) &lt;dbl&gt;,
+## #   weight (lb.) &lt;dbl&gt;, height (cm.) &lt;dbl&gt;, weight (kg.) &lt;dbl&gt;, Shqip &lt;chr&gt;,
+## #   Euskera &lt;chr&gt;, 中文 (Simplified) &lt;chr&gt;, 中文 (Traditional) &lt;chr&gt;,
+## #   Hrvatska &lt;chr&gt;, Dansk &lt;chr&gt;, English (GB) &lt;chr&gt;, English (US) &lt;chr&gt;,
+## #   فارسى &lt;chr&gt;, Suomi &lt;chr&gt;, Français &lt;chr&gt;, Gailge &lt;chr&gt;, Deutsch &lt;chr&gt;,
+## #   Ελληνικά &lt;chr&gt;, Magyar &lt;chr&gt;, Íslenska &lt;chr&gt;, India &lt;chr&gt;, Italiano &lt;chr&gt;,
+## #   日本語 &lt;chr&gt;, 한국어 &lt;chr&gt;, Македонија &lt;chr&gt;, Norsk &lt;chr&gt;, …</code></pre>
 </div>
 </div>
 <div class="footnotes footnotes-end-of-document">
